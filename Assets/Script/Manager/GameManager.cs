@@ -1,13 +1,18 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using DG.Tweening;
 
 public class GameManager : MonoBehaviour
 {
     [SerializeField]
     private Transform gameTransform;
+
     [SerializeField]
     private Transform piecePrefab;
+
+    [SerializeField]
+    private GameComplete gameComplete;
 
     private List<Transform> pieces;
     private string level;
@@ -71,6 +76,17 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    private void SwapPiece(int idx, int offset)
+    {
+        Transform temp = pieces[idx];
+        pieces[idx] = pieces[idx + offset];
+        pieces[idx + offset] = temp;
+
+        Vector3 tmepPos = pieces[idx].localPosition;
+        pieces[idx].DOLocalMove(pieces[idx + offset].localPosition, 0.25f);
+        pieces[idx + offset].DOLocalMove(tmepPos, 0.25f);
+    }
+
     private bool SwapIfValid(int i, int offset, int colCheck)
     {
         if (((i % size) != colCheck) && ((i + offset) == emptyLocation))
@@ -97,9 +113,9 @@ public class GameManager : MonoBehaviour
         return true;
     }
 
-    IEnumerator WaitSuffle(float seconds)
+    public void Restart()
     {
-        yield return new WaitForSeconds(seconds);
+        gameComplete.gameObject.SetActive(false);
         Shuffle();
         isShuffling = false;
     }
@@ -136,6 +152,25 @@ public class GameManager : MonoBehaviour
             {
                 count++;
             }
+        }
+    }
+
+    public static GameManager Instance
+    {
+        get;
+        private set;
+    }
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
         }
     }
 
@@ -181,8 +216,8 @@ public class GameManager : MonoBehaviour
 
         if (!isShuffling && CheckComplete())
         {
+            gameComplete.OpenPopup();
             isShuffling = true;
-            StartCoroutine(WaitSuffle(0.5f));
         }
     }
 }
