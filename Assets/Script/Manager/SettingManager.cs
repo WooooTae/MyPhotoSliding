@@ -4,6 +4,7 @@ using UnityEngine;
 using System.IO;
 using UnityEngine.UI;
 using System.Linq;
+using TMPro;
 
 public class SettingManager : MonoBehaviour
 {
@@ -44,6 +45,7 @@ public class SettingManager : MonoBehaviour
 
         string settingsjson = JsonUtility.ToJson(puzzlesettings, true);
         File.WriteAllText(filePath, settingsjson);
+        gameObject.SetActive(false);
     }
 
     private void LoadSettings()
