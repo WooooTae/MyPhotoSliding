@@ -30,18 +30,20 @@ public class Main : MonoBehaviour
 
     void GameStart()
     {
+        SoundManager.Instance.PlayBGM();
         SceneManager.LoadScene("Game");
     }
 
 
     void OpenSettingPopup()
     {
+        SoundManager.Instance.PlayClickSound();
         settingManager.gameObject.SetActive(true);
     }
 
     void AnimationTitle()
     {
-        titleText.DOScale(1.2f, 0.5f)
+        titleText.DOScale(1.2f, 1.5f)
             .SetLoops(-1, LoopType.Yoyo)
             .SetEase(Ease.InOutSine);
     }
