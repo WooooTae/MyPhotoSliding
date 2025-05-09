@@ -20,6 +20,7 @@ public class GameComplete : MonoBehaviour
 
     void Start()
     {
+        gameObject.SetActive(false);
         retryBtn.onClick.AddListener(RetryGame);
         mainBtn.onClick.AddListener(() => SceneManager.LoadScene("Main"));
     }

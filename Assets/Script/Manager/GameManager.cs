@@ -61,14 +61,13 @@ public class GameManager : MonoBehaviour
                 }
                 else
                 {
-                    float gap = gapThickness / 2;
                     Mesh mesh = piece.GetComponent<MeshFilter>().mesh;
                     Vector2[] uv = new Vector2[4];
 
-                    uv[0] = new Vector2((width * col) + gap, 1 - ((width * (row + 1)) - gap));
-                    uv[1] = new Vector2((width * (col + 1)) - gap, 1 - ((width * (row + 1)) - gap));
-                    uv[2] = new Vector2((width * col) + gap, 1 - ((width * row) + gap));
-                    uv[3] = new Vector2((width * (col + 1)) - gap, 1 - ((width * row) + gap));
+                    uv[0] = new Vector2((width * col), 1 - ((width * (row + 1))));
+                    uv[1] = new Vector2((width * (col + 1)), 1 - ((width * (row + 1))));
+                    uv[2] = new Vector2((width * col), 1 - ((width * row)));
+                    uv[3] = new Vector2((width * (col + 1)), 1 - ((width * row)));
 
                     mesh.uv = uv;
                 }
@@ -107,9 +106,11 @@ public class GameManager : MonoBehaviour
         {
             if (pieces[i].name != $"{i}")
             {
+                Debug.Log("Check false;");
                 return false;
             }
         }
+        Debug.Log("Check true");
         return true;
     }
 
@@ -117,7 +118,7 @@ public class GameManager : MonoBehaviour
     {
         gameComplete.gameObject.SetActive(false);
         Shuffle();
-        isShuffling = false;
+        isShuffling = true;
     }
 
     private void Shuffle()
@@ -179,6 +180,9 @@ public class GameManager : MonoBehaviour
         SetSize("easy");
         pieces = new List<Transform>();
         CreateGamePieces(0.02f);
+
+        isShuffling = true;
+        Restart();
     }
 
     private void Update()
@@ -214,7 +218,7 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        if (!isShuffling && CheckComplete())
+        if (isShuffling && CheckComplete())
         {
             gameComplete.OpenPopup();
             isShuffling = true;
