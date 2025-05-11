@@ -21,17 +21,88 @@ public class GameManager : MonoBehaviour
 
     private bool isShuffling;
 
+    public static GameManager Instance
+    {
+        get;
+        private set;
+    }
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    private void Start()
+    {
+        SettingManager.Instance.LoadSettings();
+        SetSize(SettingManager.Instance.level);
+        pieces = new List<Transform>();
+        CreateGamePieces(0.02f);
+
+        isShuffling = true;
+        Restart();
+    }
+
+    private void Update()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            SoundManager.Instance.PlayClickSound(SettingManager.Instance.sfxSlider.value);
+            RaycastHit2D hit = Physics2D.Raycast(Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
+            if (hit)
+            {
+                for (int i = 0; i < pieces.Count; i++)
+                {
+                    if (pieces[i] == hit.transform)
+                    {
+
+                        if (SwapIfValid(i, -size, size))
+                        {
+                            break;
+                        }
+                        if (SwapIfValid(i, +size, size))
+                        {
+                            break;
+                        }
+                        if (SwapIfValid(i, -1, 0))
+                        {
+                            break;
+                        }
+                        if (SwapIfValid(i, +1, size - 1))
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (isShuffling && CheckComplete())
+        {
+            gameComplete.OpenPopup();
+            isShuffling = true;
+        }
+    }
+
     private void SetSize(string levelstr)
     {
       switch (levelstr)
         {
-            case "easy":
+            case "Easy":
                 size = 3;
                 break;
-            case "medium":
+            case "Medium":
                 size = 5;
                 break;
-            case "hard":
+            case "Hard":
                 size = 7;
                 break;                                        
         }
@@ -106,11 +177,9 @@ public class GameManager : MonoBehaviour
         {
             if (pieces[i].name != $"{i}")
             {
-                Debug.Log("Check false;");
                 return false;
             }
         }
-        Debug.Log("Check true");
         return true;
     }
 
@@ -153,76 +222,6 @@ public class GameManager : MonoBehaviour
             {
                 count++;
             }
-        }
-    }
-
-    public static GameManager Instance
-    {
-        get;
-        private set;
-    }
-
-    private void Awake()
-    {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-    }
-
-    private void Start()
-    {
-        SetSize("easy");
-        pieces = new List<Transform>();
-        CreateGamePieces(0.02f);
-
-        isShuffling = true;
-        Restart();
-    }
-
-    private void Update()
-    {
-        if (Input.GetMouseButtonDown(0))
-        {
-            SoundManager.Instance.PlayClickSound();
-            RaycastHit2D hit = Physics2D.Raycast(Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
-            if (hit)
-            {
-                for (int i = 0; i < pieces.Count; i++)
-                { 
-                    if (pieces[i] == hit.transform)
-                    {
-
-                        if (SwapIfValid(i,-size,size))
-                        {
-                            break;
-                        }
-                        if (SwapIfValid(i, +size, size))
-                        {
-                            break;
-                        }
-                        if (SwapIfValid(i, -1, 0))
-                        {
-                            break;
-                        }
-                        if (SwapIfValid(i, +1, size - 1))
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        if (isShuffling && CheckComplete())
-        {
-            gameComplete.OpenPopup();
-            isShuffling = true;
         }
     }
 }

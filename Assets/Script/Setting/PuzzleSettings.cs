@@ -13,5 +13,6 @@ public enum Level
 public class PuzzleSettings
 {
     public Level level;
-    public bool isSound;
+    public float bgmSound;
+    public float sfxSound;
 }

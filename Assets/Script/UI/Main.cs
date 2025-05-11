@@ -20,8 +20,16 @@ public class Main : MonoBehaviour
     [SerializeField]
     private Transform titleText;
 
+    private void Awake()
+    {
+        SettingManager.Instance.SetSettingValues();
+    }
+
     void Start()
     {
+        SoundManager.Instance.PlayBGM(SettingManager.Instance.bgmSlider.value);
+        SoundManager.Instance.PlayClickSound(SettingManager.Instance.sfxSlider.value);
+
         startBtn.onClick.AddListener(GameStart);
         settingBtn.onClick.AddListener(OpenSettingPopup);
 
@@ -30,15 +38,15 @@ public class Main : MonoBehaviour
 
     void GameStart()
     {
-        SoundManager.Instance.PlayBGM();
+        SoundManager.Instance.PlayClickSound(SettingManager.Instance.sfxSlider.value);
         SceneManager.LoadScene("Game");
     }
 
 
     void OpenSettingPopup()
     {
-        SoundManager.Instance.PlayClickSound();
-        settingManager.gameObject.SetActive(true);
+        SoundManager.Instance.PlayClickSound(SettingManager.Instance.sfxSlider.value);
+        SettingManager.Instance.OnOffPopup(true);
     }
 
     void AnimationTitle()

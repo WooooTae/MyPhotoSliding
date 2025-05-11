@@ -29,14 +29,14 @@ public class SoundManager : MonoBehaviour
         }
     }
 
-    public void PlayBGM(float volume = 1f)
+    public void PlayBGM(float volume)
     {
         bgm.volume = volume;
         bgm.loop = true;
         bgm.Play();
     }
 
-    public void PlayClickSound(float volume = 1f)
+    public void PlayClickSound(float volume)
     {
         clickSound.PlayOneShot(clickSound.clip, volume);
     }
@@ -44,6 +44,7 @@ public class SoundManager : MonoBehaviour
     public void SetBGMVolume(float v)
     {
         bgm.volume = v;
+        bgm.Play();
     }
 
     public void SetClickVolume(float v)
