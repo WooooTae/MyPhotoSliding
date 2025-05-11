@@ -21,6 +21,8 @@ public class GameManager : MonoBehaviour
 
     private bool isShuffling;
 
+    private Texture2D puzzleTexture;
+
     public static GameManager Instance
     {
         get;
@@ -90,6 +92,13 @@ public class GameManager : MonoBehaviour
             gameComplete.OpenPopup();
             isShuffling = true;
         }
+    }
+
+    public void ApplyTexture(Texture2D texture)
+    {
+        puzzleTexture = texture;
+
+        piecePrefab.GetComponent<MeshRenderer>().material.mainTexture = puzzleTexture;
     }
 
     private void SetSize(string levelstr)

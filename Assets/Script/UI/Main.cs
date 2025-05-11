@@ -15,6 +15,9 @@ public class Main : MonoBehaviour
     private Button settingBtn;
 
     [SerializeField]
+    private Button selectBtn;
+
+    [SerializeField]
     private SettingManager settingManager;
 
     [SerializeField]
