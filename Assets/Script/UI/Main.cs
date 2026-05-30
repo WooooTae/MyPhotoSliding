@@ -36,7 +36,7 @@ public class Main : MonoBehaviour
         startBtn.onClick.AddListener(GameStart);
         settingBtn.onClick.AddListener(OpenSettingPopup);
 
-        AnimationTitle();
+        //AnimationTitle();
     }
 
     void GameStart()
