@@ -5,7 +5,7 @@ using UnityEngine;
 public enum Level
 {
     Easy,
-    Medium,
+    Normal,
     Hard
 }
 

@@ -11,6 +11,14 @@ public class ImageLoader : MonoBehaviour
     }
 
     public Texture2D selectedTexture;
+    public Texture2D defaultTexture;
+
+    public Texture2D GetTexture()
+    {
+        return selectedTexture != null
+            ? selectedTexture
+            : defaultTexture;
+    }
 
     private void Awake()
     {

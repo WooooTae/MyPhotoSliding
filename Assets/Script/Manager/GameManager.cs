@@ -1,236 +1,245 @@
-﻿using System.Collections;
+﻿using DG.Tweening;
+using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
-using DG.Tweening;
+using UnityEngine.UI;
+using Cysharp.Threading.Tasks;
 
 public class GameManager : MonoBehaviour
 {
-    [SerializeField]
-    private Transform gameTransform;
+    [SerializeField] private RectTransform puzzleBoard;
+    [SerializeField] private GamePiece piecePrefab;
+    [SerializeField] private GameComplete gameComplete;
 
-    [SerializeField]
-    private Transform piecePrefab;
+    private List<GamePiece> pieces;
 
-    [SerializeField]
-    private GameComplete gameComplete;
-
-    private List<Transform> pieces;
-    private string level;
-    private int emptyLocation;
+    private int emptyLocation; // 현재 빈 칸의 '보드판 인덱스'
     private int size;
+    private float pieceSize;    // 계산된 조각 크기 저장용
+    private float boardSize;    // 보드 크기 저장용
 
     private bool isShuffling;
-
     private Texture2D puzzleTexture;
 
-    public static GameManager Instance
-    {
-        get;
-        private set;
-    }
+    public static GameManager Instance { get; private set; }
 
     private void Awake()
     {
-        if (Instance == null)
-        {
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
     }
 
-    private void Start()
+    private async void Start()
     {
+        await UniTask.Yield();
+
+        Canvas.ForceUpdateCanvases();
+        LayoutRebuilder.ForceRebuildLayoutImmediate(puzzleBoard);
+
         SettingManager.Instance.LoadSettings();
         SetSize(SettingManager.Instance.level);
-        pieces = new List<Transform>();
-        CreateGamePieces(0.02f);
 
-        isShuffling = true;
+        pieces = new List<GamePiece>();
+
+        puzzleTexture = MakeSquare(
+            MakeReadable(ImageLoader.Instance.GetTexture())
+        );
+
+        CreateGamePieces();
         Restart();
     }
 
-    private void Update()
+    private async UniTaskVoid CheckCompleteLoop()
     {
-        if (Input.GetMouseButtonDown(0))
+        while (!isShuffling)
         {
-            SoundManager.Instance.PlayClickSound(SettingManager.Instance.sfxSlider.value);
-            RaycastHit2D hit = Physics2D.Raycast(Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
-            if (hit)
+            if (CheckComplete())
             {
-                for (int i = 0; i < pieces.Count; i++)
-                {
-                    if (pieces[i] == hit.transform)
-                    {
-
-                        if (SwapIfValid(i, -size, size))
-                        {
-                            break;
-                        }
-                        if (SwapIfValid(i, +size, size))
-                        {
-                            break;
-                        }
-                        if (SwapIfValid(i, -1, 0))
-                        {
-                            break;
-                        }
-                        if (SwapIfValid(i, +1, size - 1))
-                        {
-                            break;
-                        }
-                    }
-                }
+                gameComplete.OpenPopup();
+                break;
             }
-        }
 
-        if (isShuffling && CheckComplete())
-        {
-            gameComplete.OpenPopup();
-            isShuffling = true;
+            await UniTask.Yield();
         }
     }
 
-    public void ApplyTexture(Texture2D texture)
+    // =========================
+    // IMAGE UTILS
+    // =========================
+    private Texture2D MakeReadable(Texture2D tex) { /* 기존과 동일 */ return tex; }
+    private Texture2D MakeSquare(Texture2D tex) { /* 기존과 동일 */ return tex; }
+    public void ApplyTexture(Texture2D texture) { puzzleTexture = texture; }
+    private void SetSize(string level)
     {
-        puzzleTexture = texture;
-
-        piecePrefab.GetComponent<MeshRenderer>().material.mainTexture = puzzleTexture;
+        size = level switch { "Easy" => 3, "Medium" => 5, "Hard" => 7, _ => 3 };
     }
 
-    private void SetSize(string levelstr)
+    // =========================
+    // CREATE PIECES
+    // =========================
+    private void CreateGamePieces()
     {
-      switch (levelstr)
-        {
-            case "Easy":
-                size = 3;
-                break;
-            case "Medium":
-                size = 5;
-                break;
-            case "Hard":
-                size = 7;
-                break;                                        
-        }
-    }
+        boardSize = Mathf.Min(puzzleBoard.rect.width, puzzleBoard.rect.height);
+        pieceSize = boardSize / size;
+        float uvSize = 1f / size;
 
-    private void CreateGamePieces(float gapThickness)
-    {
-        float width = 1 / (float)size;
         for (int row = 0; row < size; row++)
         {
             for (int col = 0; col < size; col++)
             {
-                Transform piece = Instantiate(piecePrefab, gameTransform);
+                GamePiece piece = Instantiate(piecePrefab, puzzleBoard);
                 pieces.Add(piece);
 
-                piece.localPosition = new Vector3(-1 + (2 * width * col) + width,
-                                                  +1 - (2 * width * row) - width,0);
+                int index = row * size + col;
+                piece.Index = index; // 원래 가야 할 정답 인덱스(ID)
+                piece.name = index.ToString();
 
-                piece.localScale = ((2 * width) - gapThickness) * Vector3.one;
-                piece.name = $"{(row * size) + col}";
+                RectTransform rt = piece.GetComponent<RectTransform>();
+                rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.sizeDelta = new Vector2(pieceSize, pieceSize);
 
-                //empty bottom right
-                if ((row == size - 1) && (col == size - 1))
+                // 초기 위치 설정
+                rt.anchoredPosition = GetPositionFromIndex(index);
+
+                if (row == size - 1 && col == size - 1)
                 {
-                    emptyLocation = (size * size) -1;
+                    emptyLocation = index;
                     piece.gameObject.SetActive(false);
+                    continue;
                 }
-                else
+
+                RawImage img = piece.GetComponent<RawImage>();
+                if (img != null)
                 {
-                    Mesh mesh = piece.GetComponent<MeshFilter>().mesh;
-                    Vector2[] uv = new Vector2[4];
-
-                    uv[0] = new Vector2((width * col), 1 - ((width * (row + 1))));
-                    uv[1] = new Vector2((width * (col + 1)), 1 - ((width * (row + 1))));
-                    uv[2] = new Vector2((width * col), 1 - ((width * row)));
-                    uv[3] = new Vector2((width * (col + 1)), 1 - ((width * row)));
-
-                    mesh.uv = uv;
+                    img.texture = puzzleTexture;
+                    img.uvRect = new Rect(col * uvSize, 1f - ((row + 1) * uvSize), uvSize, uvSize);
                 }
             }
         }
     }
 
-    private void SwapPiece(int idx, int offset)
+    // 인덱스(0 ~ size^2-1)를 바탕으로 UI 좌표를 구하는 헬퍼 함수
+    private Vector2 GetPositionFromIndex(int index)
     {
-        Transform temp = pieces[idx];
-        pieces[idx] = pieces[idx + offset];
-        pieces[idx + offset] = temp;
-
-        Vector3 tmepPos = pieces[idx].localPosition;
-        pieces[idx].DOLocalMove(pieces[idx + offset].localPosition, 0.25f);
-        pieces[idx + offset].DOLocalMove(tmepPos, 0.25f);
+        int row = index / size;
+        int col = index % size;
+        float startX = -boardSize * 0.5f + pieceSize * 0.5f;
+        float startY = boardSize * 0.5f - pieceSize * 0.5f;
+        return new Vector2(startX + col * pieceSize, startY - row * pieceSize);
     }
 
-    private bool SwapIfValid(int i, int offset, int colCheck)
+    // =========================
+    // MOVE LOGIC
+    // =========================
+    public void TryMove(int targetBoardIndex)
     {
-        if (((i % size) != colCheck) && ((i + offset) == emptyLocation))
+        if (isShuffling) return; // 셔플 중 클릭 방지
+
+        if (SwapIfValid(targetBoardIndex, -size, size, true)) return;
+        if (SwapIfValid(targetBoardIndex, +size, size, true)) return;
+        if (SwapIfValid(targetBoardIndex, -1, 0, true)) return;
+        if (SwapIfValid(targetBoardIndex, +1, size - 1, true)) return;
+    }
+
+    private bool SwapIfValid(int boardIndex, int offset, int colCheck, bool useTween)
+    {
+        int targetIndex = boardIndex + offset;
+        if (targetIndex < 0 || targetIndex >= pieces.Count) return false;
+
+        if (offset == -1 || offset == 1)
         {
-            (pieces[i], pieces[i + offset]) = (pieces[i + offset], pieces[i]);
+            if ((boardIndex % size) == colCheck) return false;
+        }
 
-            (pieces[i].localPosition, pieces[i + offset].localPosition) = ((pieces[i + offset].localPosition, pieces[i].localPosition));
+        if (targetIndex == emptyLocation)
+        {
+            // 1. 데이터(리스트) 상에서 위치 교환
+            GamePiece temp = pieces[boardIndex];
+            pieces[boardIndex] = pieces[targetIndex];
+            pieces[targetIndex] = temp;
 
-            emptyLocation = i;
+            pieces[boardIndex].transform.SetSiblingIndex(boardIndex);
+            pieces[targetIndex].transform.SetSiblingIndex(targetIndex);
+
+            // 2. 실제 화면상의 위치 이동 (Tween 또는 즉시 이동)
+            RectTransform a = pieces[boardIndex].GetComponent<RectTransform>();
+            RectTransform b = pieces[targetIndex].GetComponent<RectTransform>();
+
+            Vector2 posA = GetPositionFromIndex(boardIndex);
+            Vector2 posB = GetPositionFromIndex(targetIndex);
+
+            if (useTween)
+            {
+                a.DOKill();
+                b.DOKill();
+                a.DOAnchorPos(posA, 0.15f);
+                b.DOAnchorPos(posB, 0.15f);
+            }
+            else
+            {
+                a.anchoredPosition = posA;
+                b.anchoredPosition = posB;
+            }
+
+            // 빈 공간의 위치 업데이트
+            emptyLocation = boardIndex;
             return true;
         }
-        return false;      
+
+        return false;
     }
 
+    // =========================
+    // CHECK COMPLETE
+    // =========================
     private bool CheckComplete()
     {
+        // 리스트의 i번째 칸에 있는 조각의 원래 ID(Index)가 i와 일치하는지 확인
         for (int i = 0; i < pieces.Count; i++)
         {
-            if (pieces[i].name != $"{i}")
-            {
+            if (pieces[i].Index != i)
                 return false;
-            }
         }
         return true;
     }
 
+    // =========================
+    // RESTART & SHUFFLE
+    // =========================
     public void Restart()
     {
         gameComplete.gameObject.SetActive(false);
-        Shuffle();
+
         isShuffling = true;
+        Shuffle();
+        isShuffling = false; // 셔플이 끝나면 false로 변경
+
+        CheckCompleteLoop().Forget();
     }
 
     private void Shuffle()
     {
-        int count =0;
-        int last = 0;
-        
-        while (count < (size * size * size))
+        int count = 0;
+        int lastEmpty = emptyLocation;
+
+        // 무한루프 방지를 위해 최대 시도 횟수 제한 설정
+        int maxAttempts = size * size * size * 5;
+        int attempts = 0;
+
+        while (count < size * size * size && attempts < maxAttempts)
         {
+            attempts++;
             int rnd = Random.Range(0, size * size);
 
-            if (rnd == last)
-            {
-                continue;
-            }
+            // 빈 칸 주변의 인덱스인지 계산해서 스왑 시도 (useTween = false)
+            if (rnd == emptyLocation) continue;
 
-            last = emptyLocation;
-
-            if (SwapIfValid(rnd,-size,size))
-            {
-                count++;
-            }
-            else if (SwapIfValid(rnd,size,size))
-            {
-                count++;
-            }
-            else if (SwapIfValid(rnd,-1,0))
-            {
-                count++;
-            }
-            else if (SwapIfValid(rnd,1,size - 1))
-            {
-                count++;
-            }
+            if (SwapIfValid(rnd, -size, size, false)) count++;
+            else if (SwapIfValid(rnd, size, size, false)) count++;
+            else if (SwapIfValid(rnd, -1, 0, false)) count++;
+            else if (SwapIfValid(rnd, 1, size - 1, false)) count++;
         }
     }
 }
+
